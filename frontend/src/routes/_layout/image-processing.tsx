@@ -4,7 +4,7 @@ import { type ProcessedImage, ResultsDisplay } from "@/components/results-displa
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Preprocessing } from "@/client";
-import { client } from "@/client/client.gen";
+
 
 export const Route = createFileRoute("/_layout/image-processing")({
   component: ImageProcessing,
@@ -20,6 +20,10 @@ const preprocessingEndpoints: (keyof typeof Preprocessing)[] = [
   "enhanceContrastImageApiV1PreprocessContrastPost",
 ];
 
+/**
+ * A component that allows users to upload an image and see the results of various preprocessing operations.
+ * @returns {JSX.Element} - The rendered component.
+ */
 function ImageProcessing() {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [processedImages, setProcessedImages] = useState<ProcessedImage[]>([]);
@@ -29,7 +33,7 @@ function ImageProcessing() {
     mutationFn: ({ endpoint, file }: { endpoint: keyof typeof Preprocessing; file: File }) => {
         const formData = new FormData();
         formData.append("img_in", file);
-        return Preprocessing[endpoint]({ body: formData });
+        return (Preprocessing[endpoint] as (options: { body: FormData }) => Promise<unknown>)({ body: formData });
     },
     onSuccess: (data, variables) => {
         const url = URL.createObjectURL(data as Blob);
@@ -52,6 +56,10 @@ function ImageProcessing() {
     },
   });
 
+  /**
+   * Handles the upload of an image file.
+   * @param file - The uploaded image file.
+   */
   const handleImageUpload = (file: File) => {
     const imageUrl = URL.createObjectURL(file);
     setOriginalImage(imageUrl);
