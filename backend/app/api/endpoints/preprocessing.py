@@ -50,6 +50,8 @@ class NoiseReductionParams(BaseModel):
 
     technique: NoiseReductionTechniques
     kernel_size: int = 5
+    sigma_color: float = 75.0
+    sigma_space: float = 75.0
 
 
 class NormalizationTechniques(StrEnum):
@@ -216,9 +218,15 @@ async def noise_reduct_image(
     if params.technique == NoiseReductionTechniques.GAUSSIAN_BLUR:
         processed_img = cv2.GaussianBlur(img, kernel_size, 0)
     elif params.technique == NoiseReductionTechniques.MEDIAN_BLUR:
+        if params.kernel_size % 2 == 0:
+            raise HTTPException(
+                status_code=400, detail="Kernel size for median blur must be an odd number"
+            )
         processed_img = cv2.medianBlur(img, params.kernel_size)
     elif params.technique == NoiseReductionTechniques.BILATERAL_FILTER:
-        processed_img = cv2.bilateralFilter(img, params.kernel_size, 75, 75)
+        processed_img = cv2.bilateralFilter(
+            img, params.kernel_size, params.sigma_color, params.sigma_space
+        )
 
     if processed_img is None:
         raise HTTPException(status_code=400, detail="Invalid noise reduction technique")
@@ -248,13 +256,27 @@ async def normalize_image(
     processed_img = None
 
     if params.technique == NormalizationTechniques.RESCALING:
-        dst = np.empty_like(img)
-        processed_img = cv2.normalize(
-            img, dst=dst, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX
-        )
+        if len(img.shape) == 3:
+            lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+            l, a, b = cv2.split(lab)
+            dst = np.empty_like(l)
+            cv2.normalize(l, dst=dst, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+            merged = cv2.merge([dst, a, b])
+            processed_img = cv2.cvtColor(merged, cv2.COLOR_LAB2BGR)
+        else:
+            dst = np.empty_like(img)
+            processed_img = cv2.normalize(
+                img, dst=dst, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX
+            )
     elif params.technique == NormalizationTechniques.HISTOGRAM_EQUALIZATION:
-        gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        processed_img = cv2.equalizeHist(gray_img)
+        if len(img.shape) == 3:
+            lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+            l, a, b = cv2.split(lab)
+            equalized_l = cv2.equalizeHist(l)
+            merged = cv2.merge([equalized_l, a, b])
+            processed_img = cv2.cvtColor(merged, cv2.COLOR_LAB2BGR)
+        else:
+            processed_img = cv2.equalizeHist(img)
 
     if processed_img is None:
         raise HTTPException(status_code=400, detail="Invalid normalization technique")
@@ -318,12 +340,22 @@ async def enhance_contrast_image(
     processed_img = None
 
     if params.technique == ContrastTechniques.CLAHE:
-        gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        clahe = cv2.createCLAHE(
-            clipLimit=params.clip_limit,
-            tileGridSize=(params.tile_grid_size, params.tile_grid_size),
-        )
-        processed_img = clahe.apply(gray_img)
+        if len(img.shape) == 3:
+            lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+            l, a, b = cv2.split(lab)
+            clahe = cv2.createCLAHE(
+                clipLimit=params.clip_limit,
+                tileGridSize=(params.tile_grid_size, params.tile_grid_size),
+            )
+            clahe_l = clahe.apply(l)
+            merged = cv2.merge([clahe_l, a, b])
+            processed_img = cv2.cvtColor(merged, cv2.COLOR_LAB2BGR)
+        else:
+            clahe = cv2.createCLAHE(
+                clipLimit=params.clip_limit,
+                tileGridSize=(params.tile_grid_size, params.tile_grid_size),
+            )
+            processed_img = clahe.apply(img)
 
     if processed_img is None:
         raise HTTPException(
