@@ -13,6 +13,8 @@ import { routeTree } from "@/routeTree.gen";
 import { handleApiError } from "./lib/utils";
 
 // ----- OpenApi-ts Config -----
+console.log("API url:", import.meta.env.VITE_API_URL)
+
 client.setConfig({
     //here we set the backend api url
     // if issues of code calling the client before its configured we can use the runtimeAPI url: https://heyapi.dev/openapi-ts/clients/axios#configuration
