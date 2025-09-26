@@ -4,3 +4,6 @@ pydantic
 Pillow
 scikit-image
 numpy
+opencv-python-headless
+python-multipart
+fastapi[standard]

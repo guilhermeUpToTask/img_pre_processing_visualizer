@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from api.endpoints import preprocessing
+from src.api.endpoints import preprocessing
 
 app = FastAPI()
 

@@ -5,20 +5,19 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Preprocessing } from "@/client";
 
+const preprocessingEndpoints = [
+    "resizeImageApiV1PreprocessResizePost",
+    "cropImageApiV1PreprocessCropPost",
+    "grayscaleImageApiV1PreprocessGrayscalePost",
+    "noiseReductImageApiV1PreprocessNoiseReductionPost",
+    "normalizeImageApiV1PreprocessNormalizationPost",
+    "binarizeImageApiV1PreprocessBinarizationPost",
+    "enhanceContrastImageApiV1PreprocessContrastPost",
+];
 
 export const Route = createFileRoute("/_layout/image-processing")({
   component: ImageProcessing,
 });
-
-const preprocessingEndpoints: (keyof typeof Preprocessing)[] = [
-  "resizeImageApiV1PreprocessResizePost",
-  "cropImageApiV1PreprocessCropPost",
-  "grayscaleImageApiV1PreprocessGrayscalePost",
-  "noiseReductImageApiV1PreprocessNoiseReductionPost",
-  "normalizeImageApiV1PreprocessNormalizationPost",
-  "binarizeImageApiV1PreprocessBinarizationPost",
-  "enhanceContrastImageApiV1PreprocessContrastPost",
-];
 
 /**
  * A component that allows users to upload an image and see the results of various preprocessing operations.
@@ -30,26 +29,74 @@ function ImageProcessing() {
 
   const mutation = useMutation({
     retry: 1,
-    mutationFn: ({ endpoint, file }: { endpoint: keyof typeof Preprocessing; file: File }) => {
-        const formData = new FormData();
-        formData.append("img_in", file);
-        return (Preprocessing[endpoint] as (options: { body: FormData }) => Promise<unknown>)({ body: formData });
+    mutationFn: ({ endpoint, file }: { endpoint: string; file: File; }) => {
+        switch (endpoint) {
+            case 'resizeImageApiV1PreprocessResizePost':
+                return Preprocessing.resizeImageApiV1PreprocessResizePost({
+                    body: {
+                        params: { width: 128, height: 128 },
+                        img_in: file,
+                    },
+                });
+            case 'cropImageApiV1PreprocessCropPost':
+                return Preprocessing.cropImageApiV1PreprocessCropPost({
+                    body: {
+                        img_in: file,
+                    },
+                });
+            case 'grayscaleImageApiV1PreprocessGrayscalePost':
+                return Preprocessing.grayscaleImageApiV1PreprocessGrayscalePost({
+                    body: {
+                        img_in: file,
+                    },
+                });
+            case 'noiseReductImageApiV1PreprocessNoiseReductionPost':
+                return Preprocessing.noiseReductImageApiV1PreprocessNoiseReductionPost({
+                    body: {
+                        params: { technique: 'gaussian_blur' },
+                        image: file,
+                    },
+                });
+            case 'normalizeImageApiV1PreprocessNormalizationPost':
+                return Preprocessing.normalizeImageApiV1PreprocessNormalizationPost({
+                    body: {
+                        params: { technique: 'rescaling' },
+                        img_in: file,
+                    },
+                });
+            case 'binarizeImageApiV1PreprocessBinarizationPost':
+                return Preprocessing.binarizeImageApiV1PreprocessBinarizationPost({
+                    body: {
+                        params: { technique: 'binary' },
+                        image: file,
+                    },
+                });
+            case 'enhanceContrastImageApiV1PreprocessContrastPost':
+                return Preprocessing.enhanceContrastImageApiV1PreprocessContrastPost({
+                    body: {
+                        params: { technique: 'clahe' },
+                        image: file,
+                    },
+                });
+            default:
+                return Promise.reject(new Error(`Unknown endpoint: ${endpoint}`));
+        }
     },
-    onSuccess: (data, variables) => {
-        const url = URL.createObjectURL(data as Blob);
+    onSuccess: (data, variables: { endpoint: string; file: File; startTime: number }) => {
+        const url = URL.createObjectURL(data as unknown as Blob);
         setProcessedImages((prev) =>
           prev.map((img) =>
             img.name === variables.endpoint
-              ? { ...img, status: "success", url, time: Date.now() - (img.time ?? 0) }
+              ? { ...img, status: "success", url, time: Date.now() - variables.startTime }
               : img
           )
         );
     },
-    onError: (error, variables) => {
+    onError: (error, variables: { endpoint: string; file: File; startTime: number }) => {
         setProcessedImages((prev) =>
           prev.map((img) =>
             img.name === variables.endpoint
-              ? { ...img, status: "error", error: error.message, time: Date.now() - (img.time ?? 0) }
+              ? { ...img, status: "error", error: error.message, time: Date.now() - variables.startTime }
               : img
           )
         );
@@ -67,13 +114,18 @@ function ImageProcessing() {
     const initialImages: ProcessedImage[] = preprocessingEndpoints.map((endpoint) => ({
       name: endpoint,
       url: "",
-      status: "pending",
-      time: Date.now(),
+      status: "idle",
     }));
     setProcessedImages(initialImages);
 
     preprocessingEndpoints.forEach((endpoint) => {
-      mutation.mutate({ endpoint, file });
+      const startTime = Date.now();
+      setProcessedImages((prev) =>
+        prev.map((img) =>
+          img.name === endpoint ? { ...img, status: "pending" } : img
+        )
+      );
+      mutation.mutate({ endpoint, file, startTime });
     });
   };
 
