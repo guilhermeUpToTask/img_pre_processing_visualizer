@@ -3,38 +3,11 @@ from io import BytesIO
 
 import cv2
 import numpy as np
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-__all__ = [
-    "router",
-    "ResizeParams",
-    "BlurParams",
-    "NoiseReductionTechniques",
-    "NoiseReductionParams",
-    "NormalizationTechniques",
-    "NormalizationParams",
-    "BinarizationTechniques",
-    "BinarizationParams",
-    "ContrastTechniques",
-    "ContrastParams",
-]
-
 router = APIRouter()
-
-
-class ResizeParams(BaseModel):
-    """Parameters for resizing an image."""
-
-    width: int
-    height: int
-
-
-class BlurParams(BaseModel):
-    """Parameters for blurring an image."""
-
-    radius: int
 
 
 class NoiseReductionTechniques(StrEnum):
@@ -45,26 +18,11 @@ class NoiseReductionTechniques(StrEnum):
     BILATERAL_FILTER = auto()
 
 
-class NoiseReductionParams(BaseModel):
-    """Parameters for noise reduction."""
-
-    technique: NoiseReductionTechniques
-    kernel_size: int = 5
-    sigma_color: float = 75.0
-    sigma_space: float = 75.0
-
-
 class NormalizationTechniques(StrEnum):
     """Techniques for image normalization."""
 
     RESCALING = auto()
     HISTOGRAM_EQUALIZATION = auto()
-
-
-class NormalizationParams(BaseModel):
-    """Parameters for image normalization."""
-
-    technique: NormalizationTechniques
 
 
 class BinarizationTechniques(StrEnum):
@@ -77,25 +35,10 @@ class BinarizationTechniques(StrEnum):
     TOZERO_INV = auto()
 
 
-class BinarizationParams(BaseModel):
-    """Parameters for image binarization."""
-
-    technique: BinarizationTechniques
-    threshold: int = 127
-
-
 class ContrastTechniques(StrEnum):
     """Techniques for contrast enhancement."""
 
     CLAHE = auto()
-
-
-class ContrastParams(BaseModel):
-    """Parameters for contrast enhancement."""
-
-    technique: ContrastTechniques
-    clip_limit: float = 2.0
-    tile_grid_size: int = 8
 
 
 async def open_img(img: UploadFile) -> np.ndarray:
@@ -132,7 +75,9 @@ def encode_img(img: np.ndarray) -> BytesIO:
 
 @router.post("/resize")
 async def resize_image(
-    params: ResizeParams, img_in: UploadFile = File(...)
+    width: int = Query(..., description="Target width in pixels"),
+    height: int = Query(..., description="Target height in pixels"),
+    img_in: UploadFile = File(...),
 ) -> StreamingResponse:
     """Resize an image.
 
@@ -147,7 +92,7 @@ async def resize_image(
         https://docs.opencv.org/4.x/da/d54/group__imgproc__transform.html#ga47a974309e9102f5f08231edc7e7529d
     """
     img = await open_img(img_in)
-    resized_img = cv2.resize(img, (params.width, params.height))
+    resized_img = cv2.resize(img, (width, height))
     buf = encode_img(resized_img)
     return StreamingResponse(buf, media_type="image/png")
 
@@ -195,7 +140,13 @@ async def grayscale_image(img_in: UploadFile = File(...)) -> StreamingResponse:
 
 @router.post("/noise_reduction")
 async def noise_reduct_image(
-    params: NoiseReductionParams, image: UploadFile = File(...)
+    technique: NoiseReductionTechniques = Query(
+        ..., description="Noise reduction technique"
+    ),
+    kernel_size: int = Query(5, description="Kernel size (odd for median)"),
+    sigma_color: float = Query(75.0, description="SigmaColor for bilateral filter"),
+    sigma_space: float = Query(75.0, description="SigmaSpace for bilateral filter"),
+    image: UploadFile = File(...),
 ) -> StreamingResponse:
     """Apply noise reduction to an image.
 
@@ -212,21 +163,20 @@ async def noise_reduct_image(
         - Bilateral Filter: https://docs.opencv.org/4.x/d4/d86/group__imgproc__filter.html#ga9d7064d478c95d60003cf859260703f
     """
     img = await open_img(image)
-    kernel_size = (params.kernel_size, params.kernel_size)
+    kernel = (kernel_size, kernel_size)
     processed_img = None
 
-    if params.technique == NoiseReductionTechniques.GAUSSIAN_BLUR:
-        processed_img = cv2.GaussianBlur(img, kernel_size, 0)
-    elif params.technique == NoiseReductionTechniques.MEDIAN_BLUR:
-        if params.kernel_size % 2 == 0:
+    if technique == NoiseReductionTechniques.GAUSSIAN_BLUR:
+        processed_img = cv2.GaussianBlur(img, kernel, 0)
+    elif technique == NoiseReductionTechniques.MEDIAN_BLUR:
+        if kernel_size % 2 == 0:
             raise HTTPException(
-                status_code=400, detail="Kernel size for median blur must be an odd number"
+                status_code=400,
+                detail="Kernel size for median blur must be an odd number",
             )
-        processed_img = cv2.medianBlur(img, params.kernel_size)
-    elif params.technique == NoiseReductionTechniques.BILATERAL_FILTER:
-        processed_img = cv2.bilateralFilter(
-            img, params.kernel_size, params.sigma_color, params.sigma_space
-        )
+        processed_img = cv2.medianBlur(img, kernel_size)
+    elif technique == NoiseReductionTechniques.BILATERAL_FILTER:
+        processed_img = cv2.bilateralFilter(img, kernel_size, sigma_color, sigma_space)
 
     if processed_img is None:
         raise HTTPException(status_code=400, detail="Invalid noise reduction technique")
@@ -237,7 +187,10 @@ async def noise_reduct_image(
 
 @router.post("/normalization")
 async def normalize_image(
-    params: NormalizationParams, img_in: UploadFile = File(...)
+    technique: NormalizationTechniques = Query(
+        ..., description="Normalization technique"
+    ),
+    img_in: UploadFile = File(...),
 ) -> StreamingResponse:
     """Normalize an image.
 
@@ -255,7 +208,7 @@ async def normalize_image(
     img = await open_img(img_in)
     processed_img = None
 
-    if params.technique == NormalizationTechniques.RESCALING:
+    if technique == NormalizationTechniques.RESCALING:
         if len(img.shape) == 3:
             lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
             l, a, b = cv2.split(lab)
@@ -268,7 +221,7 @@ async def normalize_image(
             processed_img = cv2.normalize(
                 img, dst=dst, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX
             )
-    elif params.technique == NormalizationTechniques.HISTOGRAM_EQUALIZATION:
+    elif technique == NormalizationTechniques.HISTOGRAM_EQUALIZATION:
         if len(img.shape) == 3:
             lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
             l, a, b = cv2.split(lab)
@@ -287,7 +240,11 @@ async def normalize_image(
 
 @router.post("/binarization")
 async def binarize_image(
-    params: BinarizationParams, image: UploadFile = File(...)
+    technique: BinarizationTechniques = Query(
+        ..., description="Binarization technique"
+    ),
+    threshold: int = Query(127, description="Threshold value"),
+    image: UploadFile = File(...),
 ) -> StreamingResponse:
     """Binarize an image.
 
@@ -312,9 +269,7 @@ async def binarize_image(
         BinarizationTechniques.TOZERO_INV: cv2.THRESH_TOZERO_INV,
     }
 
-    _, processed_img = cv2.threshold(
-        gray_img, params.threshold, 255, technique_map[params.technique]
-    )
+    _, processed_img = cv2.threshold(gray_img, threshold, 255, technique_map[technique])
 
     buf = encode_img(processed_img)
     return StreamingResponse(buf, media_type="image/png")
@@ -322,7 +277,10 @@ async def binarize_image(
 
 @router.post("/contrast")
 async def enhance_contrast_image(
-    params: ContrastParams, image: UploadFile = File(...)
+    technique: ContrastTechniques = Query(..., description="Contrast technique"),
+    clip_limit: float = Query(2.0, description="CLAHE clip limit"),
+    tile_grid_size: int = Query(8, description="CLAHE tile grid size"),
+    image: UploadFile = File(...),
 ) -> StreamingResponse:
     """Enhance the contrast of an image.
 
@@ -339,21 +297,21 @@ async def enhance_contrast_image(
     img = await open_img(image)
     processed_img = None
 
-    if params.technique == ContrastTechniques.CLAHE:
+    if technique == ContrastTechniques.CLAHE:
         if len(img.shape) == 3:
             lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
             l, a, b = cv2.split(lab)
             clahe = cv2.createCLAHE(
-                clipLimit=params.clip_limit,
-                tileGridSize=(params.tile_grid_size, params.tile_grid_size),
+                clipLimit=clip_limit,
+                tileGridSize=(tile_grid_size, tile_grid_size),
             )
             clahe_l = clahe.apply(l)
             merged = cv2.merge([clahe_l, a, b])
             processed_img = cv2.cvtColor(merged, cv2.COLOR_LAB2BGR)
         else:
             clahe = cv2.createCLAHE(
-                clipLimit=params.clip_limit,
-                tileGridSize=(params.tile_grid_size, params.tile_grid_size),
+                clipLimit=clip_limit,
+                tileGridSize=(tile_grid_size, tile_grid_size),
             )
             processed_img = clahe.apply(img)
 

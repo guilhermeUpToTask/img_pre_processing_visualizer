@@ -8,11 +8,11 @@ cd ..
 cd backend
 source .venv/bin/activate
 
-cd app
-python3 -c "import main; import json; print(json.dumps(main.app.openapi()))" > ../openapi.json
+PYTHONPATH=. python3 -c "import src, json; print(json.dumps(src.app.openapi()))" > openapi.json
+
 cd ..
-mv openapi.json ../frontend/
-cd ../frontend
+mv backend/openapi.json frontend/
+cd frontend
 npm run generate-client
 #npx biome format --write ./src/client
 

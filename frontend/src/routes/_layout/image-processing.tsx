@@ -30,6 +30,7 @@ function ImageProcessing() {
   const mutation = useMutation({
     retry: 1,
     mutationFn: ({ endpoint, file }: { endpoint: string; file: File; }) => {
+    
         switch (endpoint) {
             case 'resizeImageApiV1PreprocessResizePost':
                 return Preprocessing.resizeImageApiV1PreprocessResizePost({
