@@ -9,22 +9,20 @@ A concise ruleset and architecture outline for **img\_pre\_processing\_visualize
   * Responsibilities: upload UI, interactive preprocessing controls, live preview, diff / side-by-side rendering, type-safe client contracts with backend.
 * Backend: FastAPI app. Docker image `img-preproc-backend:dev`.
 
-  * Responsibilities: accept uploads, run preprocessing transforms (pluggable pipeline), return processed images or signed URLs, persist metadata, expose OpenAPI for type generation.
-* Database: Postgres (official Docker image). Volumes for persistence.
-* Orchestration: `docker-compose.yml` to define services: `frontend`, `backend`, `db`, (optional) `worker` for long-running CPU tasks, `minio` or object-store if needed.
+  * Responsibilities: accept uploads, run preprocessing transforms (pluggable pipeline), return processed images, expose OpenAPI for type generation.
+* Orchestration: `docker-compose.yml` to define services: `frontend`, `backend`.
 * Networking: backend API at `/api/v1/*`. Frontend served separately (dev: Vite dev server; prod: static build + CDN/nginx).
-* Storage: store uploaded originals and outputs on disk or object store. Keep pointer + metadata in Postgres.
+* Storage: process uploaded originals and outputs in-memory or temporary disk. No persistent DB metadata.
 * Observability: attach metrics/tracing exporter from day one (Prometheus + OpenTelemetry + logs to stdout).
 
 # 2 — Minimal component diagram (text)
 
-Frontend (React/Vite) ↔ FastAPI (REST / OpenAPI) ↔ Postgres
-(optional) FastAPI → Worker (same image) for CPU-bound preprocessing
+Frontend (React/Vite) ↔ FastAPI (REST / OpenAPI)
 All services orchestrated by docker-compose.
 
 # 3 — Goals & initial tasks (order matters)
 
-1. **E2E type-safety** — single source of truth for types (OpenAPI / codegen or tRPC). Types must flow frontend ↔ backend ↔ DB contracts.
+1. **E2E type-safety** — single source of truth for types (OpenAPI / codegen or tRPC). Types must flow frontend ↔ backend contracts.
 2. **Observability** — structured logs, metrics, traces, error reporting hooks.
 3. **CI/CD pipelines** — lint → typecheck → tests → build images → push artifacts → deploy. Pipelines must gate merges.
 
@@ -43,27 +41,25 @@ All services orchestrated by docker-compose.
 
 * Expose a complete OpenAPI spec from FastAPI. Use it to generate client types for the frontend.
 * Routes should be minimal and composable (e.g., `/api/v1/images` POST, `/api/v1/images/{id}/transform` PUT/POST, `/api/v1/images/{id}` GET).
-* Image processing functions must be pure where possible (input bytes → output bytes). Side effects only for storage/DB writes.
-* Heavy transforms run in a worker (or background tasks) to keep API responsive. Worker uses same Docker image and shares code.
-* Use dependency injection (FastAPI style) for configuration, DB, and observability clients.
+* Image processing functions must be pure where possible (input bytes → output bytes).
+* Heavy transforms run synchronously or via lightweight background tasks if needed, keeping architecture stateless.
+* Use dependency injection (FastAPI style) for configuration and observability clients.
 * Error handling: wrap handlers with a single middleware that seri
 
-alizes errors and emits metrics & logs. Use higher-order functions for retries/backoff where necessary.
-* DB access: prefer typed query-builder or SQLAlchemy Core. Keep raw SQL rare and reviewed.
+alizes errors and emits metrics & logs. Use higher-order functions for edge cases.
 
 # 6 — Frontend design rules
 
-* Keep UI stateless where possible. Use local state for controls; sync authoritative state from backend.
+* Keep UI stateless where possible. Use local state for controls.
 * Use generated types from backend OpenAPI (do not duplicate types manually).
 * UI must present original and processed images side-by-side and allow toggles: overlay, checkbox diff, slider, histogram. Keep controls composable.
 * Provide clear progress & error states for uploads and processing. Log user actions to an analytics/observability endpoint.
 * Tests: unit tests with vitest; e2e with Playwright or Cypress validating behavior (not implementation).
 
-# 7 — Storage & DB rules
+# 7 — Storage rules
 
-* Postgres for metadata (users if any, image records, transforms applied, job status). Use a schema migration tool (alembic or equivalent).
-* Never store heavy binaries in DB. Store paths/URLs and keep blobs in filesystem or object-store.
-* Use parameterized queries via query-builder. No concatenated SQL strings.
+* App is stateless. No persistent DB is required for this pipeline.
+* Process images in memory or temporary disk and return results directly to frontend.
 
 # 8 — Testing rules (strict)
 
@@ -85,18 +81,14 @@ alizes errors and emits metrics & logs. Use higher-order functions for retries/b
 
 * Validate uploads: file type, size, dimensions. Reject or reject gracefully.
 * Scan for obvious attempts at payload abuse. Rate-limit uploads per user/IP.
-* Use signed URLs or short-lived tokens for direct object-store access.
-* Sanitize metadata before persisting. Follow least privilege for DB & storage credentials (env vars + secrets).
 
 # 11 — Dev & Deployment (Docker + Compose)
 
-* Provide three core images in compose:
+* Provide two core images in compose:
 
   * `frontend` — builds React/Vite image, serves static in prod or dev server in dev.
   * `backend` — FastAPI + uvicorn image.
-  * `db` — `postgres:XX` official image with volume.
-  * Optional: `worker` — same `backend` image launched with worker command.
-* Compose file keys: `frontend`, `backend`, `worker?`, `db`, `traefik/nginx?` (optional reverse proxy).
+* Compose file keys: `frontend`, `backend`, `traefik/nginx?` (optional reverse proxy).
 * Use environment files for secrets. Keep credentials out of repository.
 * CI builds images, tags them semantically, pushes to registry, then deploys (or publishes compose artifact). Keep deployments repeatable.
 
@@ -105,7 +97,6 @@ alizes errors and emits metrics & logs. Use higher-order functions for retries/b
 * Feature branches per task. Small PRs. Draft PRs until ready.
 * Require at least one code review and passing CI before marking ready.
 * Always run full test suite locally (or in a dev container) before marking PR ready.
-* Include migration files in PRs that change DB schema. Run migrations in CI.
 
 # 13 — Style & writing rules (docs / code comments / commit messages)
 
@@ -123,14 +114,12 @@ alizes errors and emits metrics & logs. Use higher-order functions for retries/b
 
 # 15 — Non-functional requirements (brief)
 
-* Latency: UI should feel responsive for small transforms. Long transforms run async (job pattern).
-* Scalability: worker pool model for CPU-bound ops. Separate I/O (DB) from processing.
-* Reliability: retry with exponential backoff for transient failures. Persist job state to DB.
+* Latency: UI should feel responsive for small transforms.
+* Scalability: Stateless architecture allows horizontal scaling behind a load balancer.
 
 # 16 — Checklist before any merge to main
 
 * Types generated and typechecks pass front→back.
 * Observability hooks present for new endpoints.
 * Tests added/updated that assert behavior.
-* Migrations included (if any).
 * PR opened as draft, reviewed, refactored, tests passing. Mark ready only after review and CI success.
