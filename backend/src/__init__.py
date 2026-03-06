@@ -2,8 +2,11 @@ from fastapi import FastAPI
 from src.api.endpoints import preprocessing
 from starlette.middleware.cors import CORSMiddleware
 from src.core.config import settings
+from src.core.middlewares import ErrorHandlingMiddleware
 
 app = FastAPI()
+
+app.add_middleware(ErrorHandlingMiddleware)
 
 app.include_router(preprocessing.router, prefix="/api/v1/preprocess", tags=["preprocessing"])
 app.add_middleware(
