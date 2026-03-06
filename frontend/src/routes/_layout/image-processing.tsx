@@ -237,15 +237,31 @@ function ImageProcessing() {
     };
 
     return (
-        <div className="p-4">
-            <h1 className="text-2xl font-bold mb-4">Image Preprocessing</h1>
-            <ImageUploader onImageUpload={handleImageUpload} />
-            {originalImage && (
-                <ResultsDisplay
-                    originalImage={originalImage}
-                    processedImages={processedImages}
-                />
-            )}
+        <div className="w-full max-w-7xl mx-auto px-6 py-12 md:py-20 flex flex-col items-center">
+            
+            {/* Header Area */}
+            <div className="text-center mb-12 flex flex-col items-center max-w-2xl">
+                <div className="inline-block px-3 py-1 rounded-full border border-primary/20 bg-primary/10 text-primary text-sm font-medium mb-4">
+                    Pipeline Simulator
+                </div>
+                <h1 className="text-4xl md:text-5xl font-heading font-extrabold mb-4">
+                    Visual <span className="text-gradient">Pre-Processing</span>
+                </h1>
+                <p className="text-muted-foreground text-lg">
+                    Upload an image and instantly see how different pre-processing operations transform the raw pixel data for machine learning models.
+                </p>
+            </div>
+
+            <div className="w-full">
+                <ImageUploader onImageUpload={handleImageUpload} />
+                
+                {originalImage && (
+                    <ResultsDisplay
+                        originalImage={originalImage}
+                        processedImages={processedImages}
+                    />
+                )}
+            </div>
         </div>
     );
 }
