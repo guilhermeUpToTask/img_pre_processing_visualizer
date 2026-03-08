@@ -1,52 +1,117 @@
-import { UploadCloud } from "lucide-react";
+import { UploadCloud, ImagePlus } from "lucide-react"
+import { useState } from "react"
 
 interface ImageUploaderProps {
-  /**
-   * A callback function that is called when an image is uploaded.
-   * @param file - The uploaded image file.
-   */
-  onImageUpload: (file: File) => void;
+  onImageUpload: (file: File) => void
+  hasImage?: boolean
 }
 
-/**
- * A component for uploading an image file.
- * @param {ImageUploaderProps} props - The props for the component.
- * @returns {JSX.Element} - The rendered component.
- */
-export function ImageUploader({ onImageUpload }: ImageUploaderProps) {
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      onImageUpload(file);
+const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"]
+
+function isValidImageFile(file: File): boolean {
+  return ACCEPTED_TYPES.includes(file.type)
+}
+
+export function ImageUploader({ onImageUpload, hasImage = false }: ImageUploaderProps) {
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragError, setDragError] = useState<string | null>(null)
+
+  const processFile = (file: File) => {
+    if (!isValidImageFile(file)) {
+      setDragError("Use PNG, JPG, WebP or GIF")
+      return
     }
-  };
+    setDragError(null)
+    onImageUpload(file)
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) processFile(file)
+    e.target.value = ""
+  }
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+    setDragError(null)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    setDragError(null)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) processFile(file)
+  }
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full">
       <label
         htmlFor="picture-upload"
-        className="glass flex flex-col items-center justify-center w-full h-64 rounded-2xl cursor-pointer hover:bg-white/5 hover:border-primary/50 transition-all group overflow-hidden relative"
+        className={`
+          flex flex-col items-center justify-center w-full rounded-2xl cursor-pointer
+          border-2 border-dashed transition-all duration-200
+          ${hasImage ? "h-28 py-6" : "h-56 py-10"}
+          ${isDragging
+            ? "border-primary bg-primary-muted"
+            : "border-border bg-surface hover:border-primary/50 hover:bg-primary-muted/50"}
+        `}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-        <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center z-10 px-4">
-          <div className="bg-primary/10 text-primary p-4 rounded-full mb-4 group-hover:scale-110 transition-transform duration-300">
-            <UploadCloud className="w-10 h-10" />
-          </div>
-          <p className="mb-2 text-xl font-heading font-semibold text-foreground">
-            <span className="font-bold text-primary">Click to upload</span> or drag and drop
-          </p>
-          <p className="text-sm text-muted-foreground max-w-sm">
-            SVG, PNG, JPG or GIF (MAX. 800x400px). The original image will be processed through multiple ML pipelines.
-          </p>
-        </div>
         <input
           id="picture-upload"
           type="file"
-          className="hidden"
-          accept="image/png, image/jpeg, image/jpg, image/webp"
+          className="sr-only"
+          accept={ACCEPTED_TYPES.join(", ")}
           onChange={handleFileChange}
+          aria-label="Upload image"
         />
+        <div className="flex flex-col items-center gap-3 text-center px-4">
+          <div
+            className={`
+              w-14 h-14 rounded-2xl flex items-center justify-center transition-colors
+              ${isDragging ? "bg-primary text-primary-foreground" : "bg-primary-muted text-primary"}
+            `}
+          >
+            {hasImage ? (
+              <ImagePlus className="w-7 h-7" aria-hidden />
+            ) : (
+              <UploadCloud className="w-7 h-7" aria-hidden />
+            )}
+          </div>
+          <div>
+            <p className="font-semibold text-text">
+              {hasImage ? "Replace image" : "Drop image here"}
+            </p>
+            <p className="text-sm text-text-muted mt-0.5">
+              {hasImage ? "or click to upload another" : "or click to browse"}
+            </p>
+          </div>
+          <p className="text-xs text-text-muted">
+            PNG, JPG, WebP, GIF
+          </p>
+          {dragError && (
+            <p className="text-sm font-medium text-destructive">{dragError}</p>
+          )}
+        </div>
       </label>
     </div>
-  );
+  )
 }

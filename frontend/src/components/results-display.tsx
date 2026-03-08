@@ -1,142 +1,143 @@
-import { Download, Loader2, AlertCircle, Info } from "lucide-react";
+import { Download, Loader2, AlertCircle, ImageOff } from "lucide-react"
 
-/**
- * Represents a processed image with its metadata.
- */
 export interface ProcessedImage {
-  /** The name of the preprocessing operation. */
-  name: string;
-  /** The URL of the processed image. */
-  url: string;
-  /** The status of the processing. */
-  status: "idle" | "pending" | "success" | "error";
-  /** The time taken for the processing in milliseconds. */
-  time?: number;
-  /** The error message if the processing failed. */
-  error?: string;
+  name: string
+  url: string
+  status: "idle" | "pending" | "success" | "error"
+  time?: number
+  error?: string
 }
 
 interface ResultsDisplayProps {
-  /** The URL of the original image. */
-  originalImage: string;
-  /** An array of processed images. */
-  processedImages: ProcessedImage[];
+  originalImage: string
+  processedImages: ProcessedImage[]
 }
 
 const PREPROCESSING_INFO: Record<string, { title: string; description: string }> = {
-  "resizeImageApiV1PreprocessResizePost": {
-    title: "Resize (128x128)",
-    description: "Standardizes dimensions. Neural networks require fixed input tensor shapes to compute matrix multiplications reliably."
+  resizeImageApiV1PreprocessResizePost: {
+    title: "Resize (128×128)",
+    description: "Standardizes dimensions for fixed input tensor shapes.",
   },
-  "cropImageApiV1PreprocessCropPost": {
+  cropImageApiV1PreprocessCropPost: {
     title: "Center Crop",
-    description: "Removes background noise and focuses on the main subject, reducing irrelevant feature processing during model inference."
+    description: "Focuses on the main subject, reducing irrelevant features.",
   },
-  "grayscaleImageApiV1PreprocessGrayscalePost": {
+  grayscaleImageApiV1PreprocessGrayscalePost: {
     title: "Grayscale",
-    description: "Reduces data dimensionality from 3 channels (RGB) to 1. Useful when color is not a predictive feature, speeding up training drastically."
+    description: "Reduces from 3 channels to 1, speeding up training.",
   },
-  "noiseReductImageApiV1PreprocessNoiseReductionPost": {
+  noiseReductImageApiV1PreprocessNoiseReductionPost: {
     title: "Gaussian Blur",
-    description: "Applies a low-pass filter to remove high-frequency noise. Prevents models from learning random camera artifacts as important features."
+    description: "Removes high-frequency noise and camera artifacts.",
   },
-  "normalizeImageApiV1PreprocessNormalizationPost": {
-    title: "Normalization (0-1)",
-    description: "Scales pixel intensities to fall between 0 and 1. This prevents exploding/vanishing gradients and helps optimizers converge faster."
+  normalizeImageApiV1PreprocessNormalizationPost: {
+    title: "Normalization (0–1)",
+    description: "Scales pixel intensities for stable gradients.",
   },
-  "binarizeImageApiV1PreprocessBinarizationPost": {
+  binarizeImageApiV1PreprocessBinarizationPost: {
     title: "Binarization",
-    description: "Converts pixels to pure black or white using a threshold. Excellent for extracting shapes, contours, and textual features (OCR)."
+    description: "Converts to black/white for shapes and OCR.",
   },
-  "enhanceContrastImageApiV1PreprocessContrastPost": {
-    title: "Contrast Enhancement (CLAHE)",
-    description: "Localizes histogram equalization. Reveals hidden features in under-exposed or low-contrast areas without washing out bright regions."
-  }
-};
+  enhanceContrastImageApiV1PreprocessContrastPost: {
+    title: "Contrast (CLAHE)",
+    description: "Reveals hidden features in low-contrast areas.",
+  },
+}
 
-/**
- * A component for displaying the original and processed images.
- * @param {ResultsDisplayProps} props - The props for the component.
- * @returns {JSX.Element} - The rendered component.
- */
 export function ResultsDisplay({ originalImage, processedImages }: ResultsDisplayProps) {
   return (
-    <div className="w-full flex flex-col gap-10 mt-12 animate-in fade-in duration-1000">
-      
-      {/* Original Image Section */}
-      <section className="flex flex-col items-center mb-6">
-        <h2 className="text-2xl font-heading font-bold mb-4 text-center">Original Image Input</h2>
-        <div className="glass p-4 rounded-2xl w-full max-w-xl mx-auto flex justify-center shadow-lg shadow-black/20">
-          <img src={originalImage} alt="Original" className="rounded-xl w-full object-contain max-h-[400px] border border-white/5" />
+    <div className="w-full space-y-12 mt-12 animate-in fade-in duration-300">
+      {/* Original */}
+      <section>
+        <h2 className="text-lg font-heading font-semibold text-text mb-4 flex items-center gap-2">
+          <span className="w-1 h-5 rounded-full bg-primary" aria-hidden />
+          Original Image
+        </h2>
+        <div className="card-ocean p-4">
+          <img
+            src={originalImage}
+            alt="Original input"
+            className="rounded-xl w-full max-h-80 object-contain mx-auto"
+          />
         </div>
       </section>
 
-      {/* Pre-processed Images Section */}
+      {/* Results */}
       <section>
-        <div className="flex items-center gap-3 mb-6">
-          <Info className="w-6 h-6 text-primary" />
-          <h2 className="text-2xl font-heading font-bold">ML Pre-Processing Pipelines</h2>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <h2 className="text-lg font-heading font-semibold text-text mb-6">
+          Pre-Processing Results
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
           {processedImages.map((image) => {
-            const info = PREPROCESSING_INFO[image.name] || { title: image.name, description: "Processing technique applied to image." };
-            
+            const info = PREPROCESSING_INFO[image.name] ?? {
+              title: image.name,
+              description: "Processing applied.",
+            }
             return (
-              <div key={image.name} className="glass-card flex flex-col overflow-hidden group">
-                {/* Header info */}
-                <div className="p-5 border-b border-white/5 bg-white/5">
-                  <h3 className="font-heading font-bold text-lg text-foreground flex justify-between items-center">
-                    {info.title}
-                    {image.status === "success" && <span className="text-xs font-mono bg-primary/20 text-primary px-2 py-1 rounded-md">{image.time}ms</span>}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mt-2 min-h-[60px]">
+              <article
+                key={image.name}
+                className="card-ocean-elevated flex flex-col overflow-hidden"
+                aria-busy={image.status === "pending"}
+                aria-label={`${info.title} — ${image.status}`}
+              >
+                <div className="p-4 border-b border-border">
+                  <div className="flex justify-between items-start gap-2">
+                    <h3 className="font-heading font-semibold text-text">{info.title}</h3>
+                    {image.status === "success" && image.time != null && (
+                      <span className="text-xs font-mono text-text-muted bg-primary-muted px-2 py-1 rounded-md shrink-0">
+                        {image.time}ms
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-text-muted mt-1.5 leading-relaxed">
                     {info.description}
                   </p>
                 </div>
 
-                {/* Content / Image area */}
-                <div className="p-4 flex-grow flex items-center justify-center bg-black/20 relative min-h-[250px]">
-                  {image.status === "pending" && (
-                    <div className="flex flex-col items-center gap-3 text-primary">
-                      <Loader2 className="w-8 h-8 animate-spin" />
-                      <span className="text-sm font-medium animate-pulse">Computing tensor...</span>
+                <div className="p-4 flex-1 min-h-[200px] flex items-center justify-center bg-background/50">
+                  {image.status === "idle" && (
+                    <div className="flex flex-col items-center gap-2 text-text-muted">
+                      <ImageOff className="w-10 h-10 opacity-40" aria-hidden />
+                      <span className="text-sm font-medium">Waiting</span>
                     </div>
                   )}
-
+                  {image.status === "pending" && (
+                    <div className="flex flex-col items-center gap-2 text-primary">
+                      <Loader2 className="w-8 h-8 animate-spin" aria-hidden />
+                      <span className="text-sm font-medium">Processing…</span>
+                    </div>
+                  )}
                   {image.status === "error" && (
-                    <div className="flex flex-col items-center gap-3 text-destructive p-4 text-center">
-                      <AlertCircle className="w-8 h-8" />
+                    <div className="flex flex-col items-center gap-2 text-destructive text-center p-4">
+                      <AlertCircle className="w-8 h-8 shrink-0" aria-hidden />
                       <span className="text-sm font-medium">{image.error}</span>
                     </div>
                   )}
-
                   {image.status === "success" && (
-                    <img 
-                      src={image.url} 
-                      alt={info.title} 
-                      className="rounded-lg max-h-[250px] object-contain shadow-2xl transition-transform duration-500 group-hover:scale-[1.02]" 
+                    <img
+                      src={image.url}
+                      alt={`Result: ${info.title}`}
+                      className="rounded-lg max-h-48 w-full object-contain"
                     />
                   )}
                 </div>
 
-                {/* Footer Action */}
                 {image.status === "success" && (
-                  <div className="p-3 bg-white/5 flex justify-end">
-                    <a 
-                      href={image.url} 
-                      download={`${info.title.replace(/\s+/g, "_").toLowerCase()}.png`} 
-                      className="flex items-center gap-2 text-sm text-foreground/70 hover:text-primary transition-colors bg-white/5 hover:bg-primary/20 px-3 py-1.5 rounded-lg"
+                  <div className="p-3 border-t border-border">
+                    <a
+                      href={image.url}
+                      download={`${info.title.replace(/\s+/g, "_").toLowerCase()}.png`}
+                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-hover transition-colors"
                     >
-                      <Download className="w-4 h-4" /> Export Tensor
+                      <Download className="w-4 h-4" aria-hidden /> Download
                     </a>
                   </div>
                 )}
-              </div>
-            );
+              </article>
+            )
           })}
         </div>
       </section>
     </div>
-  );
+  )
 }
