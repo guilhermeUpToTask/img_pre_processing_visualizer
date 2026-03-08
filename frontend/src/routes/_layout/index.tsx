@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { Brain, Layers, Filter, Maximize, ArrowRight, Activity, Zap } from 'lucide-react'
+import { Brain, Layers, Filter, Maximize, ArrowRight, Activity, Droplets } from 'lucide-react'
 
 export const Route = createFileRoute('/_layout/')({
   component: HomePage,
@@ -7,93 +7,108 @@ export const Route = createFileRoute('/_layout/')({
 
 function HomePage() {
   return (
-    <div className="w-full flex-col flex items-center justify-center pb-24 overflow-hidden relative">
-      {/* Background Decorators */}
-      <div className="absolute top-20 left-10 w-72 h-72 bg-primary/20 rounded-full blur-[100px] -z-10" />
-      <div className="absolute bottom-40 right-10 w-96 h-96 bg-accent/15 rounded-full blur-[120px] -z-10" />
-
-      {/* Hero Section */}
-      <section className="max-w-6xl mx-auto px-6 pt-32 pb-20 text-center flex flex-col items-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-primary text-sm font-medium mb-6 animate-in slide-in-from-bottom-4 duration-500">
-          <Zap className="w-4 h-4" />
-          <span>Interactive Computer Vision Learning</span>
+    <div className="w-full">
+      {/* Hero */}
+      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-20 sm:pt-28 pb-24 sm:pb-32">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
         </div>
-        
-        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-tight animate-in slide-in-from-bottom-6 duration-700">
-          Master Image <br className="hidden md:block" />
-          <span className="text-gradient">Pre-Processing</span> for ML
-        </h1>
-        
-        <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mb-12 animate-in slide-in-from-bottom-8 duration-1000">
-          Before a Neural Network can understand an image, the data must be prepared.
-          Learn why operations like scaling, cropping, and contrast enhancement are crucial for model accuracy.
-        </p>
-        
-        <div className="flex flex-col sm:flex-row gap-4 animate-in fade-in duration-1000 delay-300">
-          <Link 
-            to="/image-processing" 
-            className="flex items-center justify-center gap-2 bg-primary text-primary-foreground px-8 py-4 rounded-full font-semibold text-lg hover:shadow-lg hover:shadow-primary/30 transition-all hover:-translate-y-1"
-          >
-            Start Processing <ArrowRight className="w-5 h-5" />
-          </Link>
-          <a 
-            href="#learn-more" 
-            className="flex items-center justify-center gap-2 glass px-8 py-4 rounded-full font-semibold text-lg hover:bg-glass-bg/80 transition-all font-heading"
-          >
-            Learn More
-          </a>
+
+        <div className="relative max-w-3xl">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-muted border border-primary/20 text-primary text-sm font-medium mb-8">
+            <Droplets className="w-4 h-4" aria-hidden />
+            <span>Interactive Computer Vision</span>
+          </div>
+
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-heading font-bold text-text leading-[1.1] tracking-tight mb-6">
+            Master Image{' '}
+            <span className="text-ocean-gradient">Pre-Processing</span>{' '}
+            for ML
+          </h1>
+
+          <p className="text-lg sm:text-xl text-text-muted max-w-2xl mb-10 leading-relaxed">
+            Transform raw pixels into model-ready tensors. Learn why scaling, cropping, and contrast enhancement are essential for neural network accuracy.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Link
+              to="/image-processing"
+              className="btn-primary inline-flex items-center justify-center gap-2"
+            >
+              Start Processing <ArrowRight className="w-5 h-5" aria-hidden />
+            </Link>
+            <a
+              href="#learn-more"
+              className="inline-flex items-center justify-center gap-2 font-semibold text-text bg-surface border border-border rounded-xl px-6 py-3 hover:bg-surface-elevated hover:border-border-strong transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              Learn More
+            </a>
+          </div>
         </div>
       </section>
 
-      {/* Educational Features Section */}
-      <section id="learn-more" className="max-w-6xl mx-auto px-6 py-20 w-full relative">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 font-heading">Why Pre-Process Data?</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Raw images are chaotic and full of noise. Pre-processing transforms them into mathematical tensors that Deep Learning models can reliably digest.
-          </p>
-        </div>
+      {/* Features */}
+      <section id="learn-more" className="border-t border-border bg-surface/50 py-20 sm:py-28 scroll-mt-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-2xl sm:text-3xl font-heading font-bold text-text mb-4">
+              Why Pre-Process Data?
+            </h2>
+            <p className="text-text-muted max-w-2xl mx-auto text-base sm:text-lg">
+              Raw images are chaotic. Pre-processing turns them into clean tensors that deep learning models can reliably learn from.
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <FeatureCard 
-            icon={<Filter className="w-8 h-8 text-primary" />}
-            title="Noise Reduction"
-            description="Removes high-frequency artifacts (noise) so models focus on true structural patterns rather than camera imperfections."
-          />
-          <FeatureCard 
-            icon={<Layers className="w-8 h-8 text-accent" />}
-            title="Dimensionality"
-            description="Grayscale conversion and resizing reduce the feature space, significantly speeding up training."
-          />
-          <FeatureCard 
-            icon={<Activity className="w-8 h-8 text-green-400" />}
-            title="Normalization"
-            description="Rescaling pixel values between 0 and 1 stabilizes gradients during backpropagation."
-          />
-          <FeatureCard 
-            icon={<Maximize className="w-8 h-8 text-blue-400" />}
-            title="Contrast Enhancement"
-            description="Techniques like CLAHE equalize histograms to reveal hidden shapes in low-light conditions."
-          />
-          <FeatureCard 
-            icon={<Brain className="w-8 h-8 text-purple-400" />}
-            title="Model Robustness"
-            description="Applying consistent pre-processing ensures the model generalizes well to new, unseen data in production."
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <FeatureCard
+              icon={<Filter className="w-7 h-7 text-primary" aria-hidden />}
+              title="Noise Reduction"
+              description="Removes high-frequency artifacts so models focus on true structural patterns, not camera imperfections."
+            />
+            <FeatureCard
+              icon={<Layers className="w-7 h-7 text-primary" aria-hidden />}
+              title="Dimensionality"
+              description="Grayscale and resizing reduce the feature space, speeding up training significantly."
+            />
+            <FeatureCard
+              icon={<Activity className="w-7 h-7 text-primary" aria-hidden />}
+              title="Normalization"
+              description="Rescaling pixel values to 0–1 stabilizes gradients during backpropagation."
+            />
+            <FeatureCard
+              icon={<Maximize className="w-7 h-7 text-primary" aria-hidden />}
+              title="Contrast Enhancement"
+              description="CLAHE and histogram equalization reveal hidden shapes in low-light conditions."
+            />
+            <FeatureCard
+              icon={<Brain className="w-7 h-7 text-primary" aria-hidden />}
+              title="Model Robustness"
+              description="Consistent pre-processing ensures models generalize well to new, unseen data."
+            />
+          </div>
         </div>
       </section>
     </div>
   )
 }
 
-function FeatureCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
+function FeatureCard({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode
+  title: string
+  description: string
+}) {
   return (
-    <div className="glass-card p-6 flex flex-col gap-4">
-      <div className="p-3 bg-white/5 rounded-xl w-fit border border-white/10">
+    <div className="card-ocean-elevated p-6 flex flex-col gap-4 hover:shadow-xl hover:shadow-black/5 transition-shadow">
+      <div className="w-12 h-12 rounded-xl bg-primary-muted border border-primary/20 flex items-center justify-center text-primary">
         {icon}
       </div>
-      <h3 className="text-xl font-bold font-heading">{title}</h3>
-      <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+      <h3 className="font-heading font-semibold text-lg text-text">{title}</h3>
+      <p className="text-sm text-text-muted leading-relaxed">{description}</p>
     </div>
   )
 }
